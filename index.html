@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check-in B&B</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    h1 { color: #2c3e50; }
+    button { margin: 3px; padding: 5px 10px; }
+    #riepilogo, #operatoriRiepilogo { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+    .selezione { margin-bottom: 10px; }
+    .camera-selezionata { background: #2ecc71; color: white; }
+    .riga-selezionata { background:#f1c40f; cursor:pointer; }
+    .small-btn { font-size: 12px; margin-left: 5px; padding: 2px 5px; cursor:pointer; color: blue; text-decoration: underline; background:none; border:none; }
+    .dropdown { position: absolute; background: #f9f9f9; border:1px solid #ccc; padding:5px; display:none; z-index:10; }
+    .dropdown button { display:block; margin:2px 0; font-size:12px; }
+    .operator-section { margin-top:20px; border-top:1px dashed #ccc; padding-top:10px; }
+    .nota-operatore { font-style: italic; color: #555; margin-left:5px; }
+    .riga-checkin { font-size: 13px; white-space: nowrap; } /* compatte, senza a capo */
+  </style>
+</head>
+<body>
+
+<h1>Check-in B&B</h1>
+
+<div class="selezione">
+  <h3>Seleziona la struttura:</h3>
+  <button onclick="selezionaStruttura('Borgo',this)">Borgo</button>
+  <button onclick="selezionaStruttura('Carbonara 95',this)">Carbonara 95</button>
+  <button onclick="selezionaStruttura('Carbonara 123',this)">Carbonara 123</button>
+  <button onclick="selezionaStruttura('Carbonara 105',this)">Carbonara 105</button>
+  <button onclick="selezionaStruttura('Terrace',this)">Terrace</button>
+  <button onclick="selezionaStruttura('Mattonelle',this)">Mattonelle</button>
+  <button onclick="selezionaStruttura('Palazzo Valentino',this)">Palazzo Valentino</button>
+  <button onclick="selezionaStruttura('Tessitori',this)">Tessitori</button>
+  <button onclick="selezionaStruttura('B&B Valentino',this)">B&B Valentino</button>
+  <button onclick="selezionaStruttura('Suite 36',this)">Suite 36</button>
+  <button onclick="selezionaStruttura('Chiara',this)">Chiara</button>
+  <button onclick="selezionaStruttura('Giovanni suite',this)">Giovanni suite</button>
+  <button onclick="selezionaStruttura('Dora',this)">Dora</button>
+  <button onclick="selezionaStruttura('Lavinaio',this)">Lavinaio</button>
+  <button onclick="selezionaStruttura('Longo',this)">Longo</button>
+  <button onclick="selezionaStruttura('Luigi',this)">Luigi</button>
+  <button onclick="selezionaStruttura('Foria',this)">Foria</button>
+  <button onclick="selezionaStruttura('Luxury home',this)">Luxury home</button>
+  <button onclick="selezionaStruttura('Garibaldi',this)">Garibaldi</button>
+</div>
+
+<div class="selezione">
+  <h3>Seleziona il numero della stanza:</h3>
+  <div id="pulsantiCamere"></div>
+</div>
+
+<div class="selezione">
+  <h3>Numero di persone:</h3>
+  <div id="personeBtns"></div>
+</div>
+
+<div class="selezione">
+  <h3>Numero di notti:</h3>
+  <input type="number" id="notti" value="1" min="1" max="30">
+</div>
+
+<div class="selezione">
+  <h3>Somma (€):</h3>
+  <input type="number" id="somma" value="0" step="0.01">
+</div>
+
+<button onclick="aggiungiCheckin()">Aggiungi check-in</button>
+<button onclick="resetCheckinTotale()" style="background:red;color:white;">Reset tutto</button>
+<button onclick="eliminaSelezionato()" style="background:orange;color:white;">Elimina selezionato</button>
+
+<div id="riepilogo"></div>
+<div id="operatoriRiepilogo" class="operator-section"></div>
+
+<div id="dropdownMenu" class="dropdown"></div>
+
+<script>
+let checkin=[];
+let strutturaCorrente=null;
+let personeCorrente=1;
+let camereCorrenti=[];
+let selezionatoIndex=null;
+let operatori=["Raffaella","Mario","Noi"];
+
+if(localStorage.getItem("checkinData")) checkin=JSON.parse(localStorage.getItem("checkinData"));
+
+/* CAMERE */
+for(let i=1;i<=8;i++){ let btn=document.createElement("button"); btn.textContent=i; btn.onclick=function(){ selezionaCamera(this,i); }; document.getElementById("pulsantiCamere").appendChild(btn); }
+for(let i=101;i<=104;i++){ let btn=document.createElement("button"); btn.textContent=i; btn.onclick=function(){ selezionaCamera(this,i); }; document.getElementById("pulsantiCamere").appendChild(btn); }
+for(let i=201;i<=208;i++){ let btn=document.createElement("button"); btn.textContent=i; btn.onclick=function(){ selezionaCamera(this,i); }; document.getElementById("pulsantiCamere").appendChild(btn); }
+
+/* PERSONE FINO A 30 */
+for(let i=1;i<=30;i++){ let btn=document.createElement("button"); btn.textContent=i; btn.onclick=function(){ selezionaPersone(i,this); }; document.getElementById("personeBtns").appendChild(btn); }
+
+/* SELEZIONI */
+function selezionaStruttura(nome,btn){ strutturaCorrente=nome; document.querySelectorAll(".selezione button").forEach(b=>{ if(b.innerText===nome) b.classList.add("camera-selezionata"); else if(b.onclick && b.onclick.toString().includes("selezionaStruttura")) b.classList.remove("camera-selezionata"); }); }
+function selezionaCamera(btn,num){ let index=camereCorrenti.indexOf(num); if(index===-1){ camereCorrenti.push(num); btn.classList.add('camera-selezionata'); } else{ camereCorrenti.splice(index,1); btn.classList.remove('camera-selezionata'); } }
+function selezionaPersone(num,btn){ personeCorrente=num; document.querySelectorAll("#personeBtns button").forEach(b=>b.classList.remove("camera-selezionata")); btn.classList.add("camera-selezionata"); }
+
+/* AGGIUNTA */
+function aggiungiCheckin(){
+  let notti=parseInt(document.getElementById("notti").value);
+  let somma=parseFloat(document.getElementById("somma").value)||0;
+  let entry={persone:personeCorrente, notti:notti, somme:[{descr:"", valore:somma, pos:0, contanti:0, entrambi:false}]};
+  if(strutturaCorrente) entry.struttura=strutturaCorrente;
+  if(camereCorrenti.length) entry.camere=camereCorrenti.join(", ");
+  checkin.push(entry);
+  camereCorrenti=[];
+  document.querySelectorAll('#pulsantiCamere button').forEach(b=>b.classList.remove('camera-selezionata'));
+  document.getElementById("somma").value=0;
+  salva();
+}
+
+/* SALVA */
+function salva(){ localStorage.setItem("checkinData",JSON.stringify(checkin)); aggiornaRiepilogo(); aggiornaRiepilogoOperatori(); }
+
+/* SELEZIONE RIGA */
+function selezionaRiga(i,event){ if(selezionatoIndex===i) selezionatoIndex=null; else selezionatoIndex=i; aggiornaRiepilogo(); aggiornaRiepilogoOperatori(); if(event.target.classList.contains("small-btn")){ showDropdown('menu',i,event); } }
+
+/* ELIMINA */
+function eliminaSelezionato(){ if(selezionatoIndex===null) return; checkin.splice(selezionatoIndex,1); selezionatoIndex=null; salva(); }
+
+/* RESET */
+function resetCheckinTotale(){ if(confirm("Sicuro?")){ checkin=[]; salva(); } }
+
+/* DROPDOWN */
+function showDropdown(type,i,event,indexS){
+  hideDropdown();
+  let dropdown=document.getElementById("dropdownMenu");
+  dropdown.style.display="block";
+  dropdown.style.left=event.pageX+"px";
+  dropdown.style.top=event.pageY+"px";
+  dropdown.innerHTML="";
+  if(type==="menu"){
+    let opzioni=[
+      {txt:"Operatore", az:()=>showDropdown('operatore',i,event)},
+      {txt:"Pagamento", az:()=>showDropdown('pagamento',i,event,0)},
+      {txt:"Parcheggio/Box", az:()=>showDropdown('parcheggio',i,event)},
+      {txt:"+10 🧳", az:()=>showDropdown('dieci',i,event)},
+      {txt:"Nota", az:()=>aggiungiNotaRiga(i)},
+      {txt:"Modifica", az:()=>modificaRigaCompleta(i)},
+      {txt:"⬇️", az:()=>spostaRigaOperatore(i)}
+    ];
+    opzioni.forEach(o=>{ let btn=document.createElement("button"); btn.textContent=o.txt; btn.onclick=function(){ hideDropdown(); o.az(); }; dropdown.appendChild(btn); });
+  }
+  else if(type==="operatore"){
+    operatori.forEach(op=>{ let btn=document.createElement("button"); btn.textContent=op; btn.onclick=function(){ checkin[i].operatore=op; salva(); hideDropdown(); }; dropdown.appendChild(btn); });
+  }
+  else if(type==="pagamento"){
+    ["POS","Contanti","Entrambi"].forEach(pay=>{
+      let btn=document.createElement("button");
+      btn.textContent=pay;
+      btn.onclick=function(){
+        let s=checkin[i].somme[indexS];
+        if(pay==="Entrambi"){ let posVal=parseFloat(prompt("POS:",0))||0; let contVal=parseFloat(prompt("Contanti:",0))||0; s.pos=posVal; s.contanti=contVal; s.entrambi=true; }
+        else { s.pos = (pay==="POS") ? s.valore : 0; s.contanti = (pay==="Contanti") ? s.valore : 0; s.entrambi=false; }
+        salva(); hideDropdown();
+      };
+      dropdown.appendChild(btn);
+    });
+  }
+  else if(type==="parcheggio"){
+    ["🅿️ Parcheggio","🚗 Box"].forEach(tipo=>{
+      let btn=document.createElement("button");
+      btn.textContent=tipo;
+      btn.onclick=function(){ let prezzo=parseFloat(prompt("Prezzo:",0))||0; let nuova={descr:tipo, valore:prezzo, pos:0, contanti:0, entrambi:false}; checkin[i].somme.push(nuova); salva(); showDropdown("pagamento",i,event,checkin[i].somme.length-1); };
+      dropdown.appendChild(btn);
+    });
+  }
+  else if(type==="dieci"){ let nuova={descr:"+10 🧳", valore:10, pos:0, contanti:0, entrambi:false}; checkin[i].somme.push(nuova); salva(); showDropdown("pagamento",i,event,checkin[i].somme.length-1); }
+}
+
+function hideDropdown(){ document.getElementById("dropdownMenu").style.display="none"; }
+
+/* FUNZIONI AGGIUNTIVE */
+function aggiungiNotaRiga(i){ let nota=prompt("Nota per la riga:"); if(nota){ checkin[i].nota=nota; salva(); } }
+function modificaRigaCompleta(i){
+  let c = checkin[i];
+  let struttura=prompt("Struttura:", c.struttura||"");
+  if(struttura!==null) c.struttura=struttura;
+  let camere=prompt("Camere:", c.camere||"");
+  if(camere!==null) c.camere=camere;
+  let persone=prompt("Numero persone:", c.persone||1);
+  if(persone!==null) c.persone=parseInt(persone)||1;
+  let notti=prompt("Numero notti:", c.notti||1);
+  if(notti!==null) c.notti=parseInt(notti)||1;
+  let somma=prompt("Somma:", c.somme[0].valore||0);
+  if(somma!==null) c.somme[0].valore=parseFloat(somma)||0;
+  salva();
+}
+function spostaRigaOperatore(i){ let op=checkin[i].operatore; if(!op) { alert("Seleziona prima un operatore"); return; } checkin[i].spostata=true; salva(); }
+function aggiungiNotaOperatore(op){ let nota=prompt("Nota per l'operatore "+op+":"); if(nota){ let c=checkin.find(ch=>ch.operatore===op); if(c) c.notaOp=nota; salva(); } }
+
+/* FORMATO VALORI CON EMOJI */
+function formatSomma(s){
+  let extra="";
+  if(s.descr==="🅿️ Parcheggio") extra="🅿️";
+  else if(s.descr==="🚗 Box") extra="🚗";
+  else if(s.descr==="+10 🧳") extra="🧳";
+
+  let pagamento="";
+  if(s.entrambi) pagamento="💸💳";
+  else if(s.contanti) pagamento="💸";
+  else if(s.pos) pagamento="💳";
+
+  return `${s.valore.toFixed(2)}€ (${extra}${pagamento})`;
+}
+
+/* RIEPILOGO */
+function aggiornaRiepilogo(){
+  let html="<h3>Riepilogo:</h3>";
+  checkin.forEach((c,i)=>{
+    if(c.spostata) return;
+    let parti=[];
+    if(c.struttura) parti.push(c.struttura);
+    if(c.camere) parti.push(c.camere);
+    parti.push(`${c.persone}P`);
+    c.somme.forEach(s=>parti.push(formatSomma(s)));
+    if(c.operatore) parti.push(c.operatore+" ✅");
+    if(c.nota) parti.push("📝 "+c.nota);
+    html+=`<p class="riga-checkin ${selezionatoIndex===i ? 'riga-selezionata' : ''}" onclick="selezionaRiga(${i}, event)">
+      ${parti.join(" - ")} <span class="small-btn">⚙️</span>
+    </p>`;
+  });
+  document.getElementById("riepilogo").innerHTML=html;
+}
+
+/* OPERATORI */
+function aggiornaRiepilogoOperatori(){
+  let sez=document.getElementById("operatoriRiepilogo");
+  let html=`<hr style="border:1px solid #999; margin:10px 0;"><h3>Check-in per operatore:</h3>`;
+  operatori.forEach(op=>{
+    html+=`<h4>${op} <span class="small-btn" onclick="aggiungiNotaOperatore('${op}')">+</span>`;
+    let notaOpRiga=checkin.find(c=>c.operatore===op && c.notaOp);
+    if(notaOpRiga) html+=` <span class="nota-operatore">${notaOpRiga.notaOp}</span>`;
+    html+="</h4>";
+
+    let list=checkin.filter(c=>c.operatore===op && c.spostata);
+    let totaleContanti=0, totalePOS=0;
+    if(list.length===0){ html+="<p>Nessun check-in</p>"; }
+    else{
+      list.forEach((c)=>{
+        let parti=[];
+        if(c.struttura) parti.push(c.struttura);
+        if(c.camere) parti.push(c.camere);
+        parti.push(`${c.persone} P`);
+        c.somme.forEach(s=>{
+          parti.push(formatSomma(s));
+          totalePOS+=s.pos||0;
+          totaleContanti+=s.contanti||0;
+        });
+        html+=`<p class="riga-checkin ${selezionatoIndex===checkin.indexOf(c) ? 'riga-selezionata' : ''}" onclick="selezionaRiga(${checkin.indexOf(c)}, event)">
+          ${parti.join(" - ")} <span class="small-btn">⚙️</span>
+        </p>`;
+      });
+      html+=`<p><b>Totale POS: € ${totalePOS.toFixed(2)} / Contanti: € ${totaleContanti.toFixed(2)}</b></p>`;
+    }
+  });
+  sez.innerHTML=html;
+}
+
+aggiornaRiepilogo();
+aggiornaRiepilogoOperatori();
+</script>
+
+</body>
+</html>
+
+<!-- BOTTONE ESPORTA CSV -->
+<button onclick="esportaCSV()" style="background:green;color:white;margin-top:10px;">Esporta CSV</button>
+
+<script>
+/* ---- CONFERMA PRIMA DI CHIUDERE ---- */
+window.addEventListener("beforeunload", function (e) {
+    // Questo messaggio serve solo per chiedere conferma
+    e.preventDefault();
+    e.returnValue = '';
+});
+
+/* ---- FUNZIONE ESPORTA CSV ---- */
+function esportaCSV() {
+    if(checkin.length === 0){ 
+        alert("Nessun check-in da esportare"); 
+        return; 
+    }
+
+    let csv = "Struttura,Camere,Persone,Notti,Somme,Operatore,Nota\n";
+    checkin.forEach(c => {
+        let sommeStr = c.somme.map(s => `${s.descr || ''}:${s.valore.toFixed(2)}€`).join(" | ");
+        csv += `"${c.struttura || ''}","${c.camere || ''}","${c.persone}","${c.notti}","${sommeStr}","${c.operatore || ''}","${c.nota || ''}"\n`;
+    });
+
+    // Crea un link temporaneo per scaricare il CSV
+    let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    let url = URL.createObjectURL(blob);
+    let link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "checkin.csv");
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
